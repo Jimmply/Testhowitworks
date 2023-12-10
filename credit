@@ -8,6 +8,7 @@ from sklearn.metrics import classification_report, accuracy_score, confusion_mat
 from imblearn.over_sampling import SMOTE
 from sklearn.feature_selection import SelectKBest, f_cl
 
+
 credit_data = pd.read_csv('your_credit_data.csv')
 
 print(credit_data.head())
