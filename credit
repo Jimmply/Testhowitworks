@@ -1,30 +1,55 @@
 import pandas as pd
-from sklearn.model_selection import train_test_split
+import numpy as np
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report, accuracy_score
 from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
+from imblearn.over_sampling import SMOTE
+from sklearn.feature_selection import SelectKBest, f_cl
 
-credit_data = pd.read_csv('dataframe_credit.csv')
+credit_data = pd.read_csv('your_credit_data.csv')
 
 print(credit_data.head())
 
 X = credit_data.drop('credit_score', axis=1)  # Features
 y = credit_data['credit_score']  # Target variable
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-scaler = StandardScaler()
-X_train_scaled = scaler.fit_transform(X_train)
-X_test_scaled = scaler.transform(X_test)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 
-model = RandomForestClassifier(n_estimators=100, random_state=42)
-model.fit(X_train_scaled, y_train)
+pipeline = Pipeline([
+    ('scaler', StandardScaler()),
+    ('feature_selector', SelectKBest(f_classif, k='all')),  # Adjust k based on feature importance analysis
+    ('smote', SMOTE(sampling_strategy='auto')),  # Handle class imbalance
+    ('classifier', RandomForestClassifier(random_state=42))
+])
+param_grid = {
+    'feature_selector__k': [5, 10, 15],  # Example values, adjust based on feature importance analysis
+    'classifier__n_estimators': [50, 100, 200],
+    'classifier__max_depth': [None, 10, 20],
+    'classifier__min_samples_split': [2, 5, 10],
+    'classifier__min_samples_leaf': [1, 2, 4]
 
-y_pred = model.predict(X_test_scaled)
+
+grid_search = GridSearchCV(pipeline, param_grid=param_grid, cv=5, scoring='accuracy', verbose=2, n_jobs=-1)
+grid_search.fit(X_train, y_train)
+
+
+print("Best Parameters:", grid_search.best_params_)
+
+# Evaluate the model on the test set
+y_pred = grid_search.predict(X_test)
 
 
 print("Accuracy:", accuracy_score(y_test, y_pred))
 print("\nClassification Report:\n", classification_report(y_test, y_pred))
+print("\nConfusion Matrix:\n", confusion_matrix(y_test, y_pred))
+
+
+
+best_model = grid_search.best_estimator_
+joblib.dump(best_model, 'best_credit_score_model.pkl')ort(y_test, y_pred))
 
 import joblib
 joblib.dump(model, 'credit_score_model.pkl')
